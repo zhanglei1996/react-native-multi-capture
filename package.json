@@ -1,20 +1,32 @@
 {
   "name": "react-native-multi-capture",
   "version": "0.1.0",
-  "description": "A production-ready multi-capture camera for React Native",
+  "description": "A production-ready multi-capture photo and video camera for React Native",
+  "homepage": "https://github.com/zhanglei1996/react-native-multi-capture#readme",
+  "bugs": {
+    "url": "https://github.com/zhanglei1996/react-native-multi-capture/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhanglei1996/react-native-multi-capture.git"
+  },
+  "type": "commonjs",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
     ".": {
-      "react-native-multi-capture-source": "./src/index.tsx",
+      "react-native-multi-capture-source": "./src/index.ts",
       "types": "./lib/typescript/src/index.d.ts",
       "default": "./lib/module/index.js"
     },
     "./package.json": "./package.json"
   },
   "files": [
+    "assets",
     "src",
     "lib",
+    "docs",
+    "!docs/media/*.mp4",
     "android",
     "ios",
     "cpp",
@@ -34,50 +46,59 @@
   "scripts": {
     "example": "yarn workspace react-native-multi-capture-example",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
-    "prepare": "bob build",
+    "prepare": "bob build && node scripts/copy-assets.mjs",
     "typecheck": "tsc",
-    "lint": "eslint \"**/*.{js,ts,tsx}\""
+    "lint": "eslint \"**/*.{js,ts,tsx}\"",
+    "test": "jest",
+    "check": "yarn lint && yarn typecheck && yarn test --runInBand && yarn prepare",
+    "pack:check": "npm pack --dry-run"
   },
   "keywords": [
     "react-native",
+    "camera",
+    "multi-capture",
+    "photo",
+    "video",
     "ios",
     "android"
   ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/lysto/react-native-multi-capture.git"
-  },
-  "author": "LySto <devnull@example.com> (https://github.com)",
+  "author": "LySto",
   "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/lysto/react-native-multi-capture/issues"
-  },
-  "homepage": "https://github.com/lysto/react-native-multi-capture#readme",
   "publishConfig": {
+    "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
     "@eslint/compat": "^2.1.0",
     "@eslint/eslintrc": "^3.3.5",
-    "@eslint/js": "^10.0.1",
+    "@eslint/js": "^9.39.5",
     "@react-native/babel-preset": "0.86.2",
-    "@react-native/eslint-config": "0.85.0",
+    "@react-native/eslint-config": "0.86.2",
+    "@react-native/jest-preset": "0.86.2",
     "@types/react": "^19.2.0",
     "del-cli": "^7.0.0",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-ft-flow": "^3.0.11",
     "eslint-plugin-prettier": "^5.5.6",
+    "jest": "^29.7.0",
     "prettier": "^3.8.3",
     "react": "19.2.3",
     "react-native": "0.86.2",
-    "react-native-builder-bob": "^0.41.0",
+    "react-native-builder-bob": "^0.43.0",
+    "react-native-nitro-image": "0.15.1",
+    "react-native-nitro-modules": "0.36.3",
+    "react-native-video": "7.0.0-beta.10",
+    "react-native-vision-camera": "5.2.0",
     "turbo": "^2.9.16",
     "typescript": "^6.0.3"
   },
   "peerDependencies": {
-    "react": "*",
-    "react-native": "*"
+    "react": ">=19.0.0",
+    "react-native": ">=0.79.0",
+    "react-native-nitro-image": ">=0.12.0 <1.0.0",
+    "react-native-nitro-modules": ">=0.29.0 <1.0.0",
+    "react-native-video": ">=7.0.0-beta.10 <8.0.0",
+    "react-native-vision-camera": ">=5.0.0 <6.0.0"
   },
   "workspaces": [
     "example"

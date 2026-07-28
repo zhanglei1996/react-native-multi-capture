@@ -21,6 +21,10 @@ export default defineConfig([
     rules: {
       'react/react-in-jsx-scope': 'off',
       'prettier/prettier': 'error',
+      // Fire-and-forget async handlers are intentional in React Native events.
+      'no-void': 'off',
+      // Theme colors and Animated values must be created at render time.
+      'react-native/no-inline-styles': 'off',
     },
   },
   {

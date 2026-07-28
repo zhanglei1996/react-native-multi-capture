@@ -1,11 +1,11 @@
 {
     "schema_version": 1,
-    "commit": "",
-    "indexed_at": "2026-07-28T13:24:45Z",
+    "commit": "5629fac8928e8a8beee4b0d2df5b4125e65158d2",
+    "indexed_at": "2026-07-28T17:11:26Z",
     "project": "Users-mac-disk-ly_sto-react-native-multi-capture",
-    "nodes": 1,
-    "edges": 0,
-    "original_size": 1179648,
-    "compressed_size": 1655,
-    "compression_level": 9
+    "nodes": 373,
+    "edges": 514,
+    "original_size": 2293760,
+    "compressed_size": 240805,
+    "compression_level": 3
 }
