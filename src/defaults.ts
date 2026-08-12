@@ -34,6 +34,7 @@ export const zhCNStrings: MultiCaptureStrings = {
   previewAsset: '预览拍摄内容',
   closePreview: '关闭预览',
   previewLoadFailed: '无法加载此文件',
+  libraryPickerFailed: '相册打开失败，请重试',
 };
 
 export const enStrings: MultiCaptureStrings = {
@@ -67,6 +68,7 @@ export const enStrings: MultiCaptureStrings = {
   previewAsset: 'Preview capture',
   closePreview: 'Close preview',
   previewLoadFailed: 'Unable to load this file',
+  libraryPickerFailed: 'Unable to open the photo library. Please try again.',
 };
 
 export const multiCaptureLocales: Record<

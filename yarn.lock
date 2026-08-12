@@ -2076,6 +2076,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-native-camera-roll/camera-roll@npm:7.10.2":
+  version: 7.10.2
+  resolution: "@react-native-camera-roll/camera-roll@npm:7.10.2"
+  peerDependencies:
+    react-native: ">=0.59"
+  checksum: 10c0/840d37102ce1f6291036e224e2d23757b71279b10aafb5feef59509bcfa16c362934774d01c53579f12673209298ff0c6fcd1e1106b97992a812a752007104f5
+  languageName: node
+  linkType: hard
+
+"@react-native-community/blur@npm:^4.4.0":
+  version: 4.4.1
+  resolution: "@react-native-community/blur@npm:4.4.1"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/f8f3b2e0dc630d93219c5db822a5d283754beedf31b8e481c17bca6f8b2a29d0e24cad4c5013f692f120a3336490dc5b1b3990a68c714c3308151adf92686ad7
+  languageName: node
+  linkType: hard
+
 "@react-native-community/cli-clean@npm:20.1.0":
   version: 20.1.0
   resolution: "@react-native-community/cli-clean@npm:20.1.0"
@@ -7955,6 +7974,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-native-image-picker@npm:8.2.1":
+  version: 8.2.1
+  resolution: "react-native-image-picker@npm:8.2.1"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/82b6c51ece8d16806975aff7675d26280fdd2391c05ca9415620195cc6643ca0db4601d3b24e117d7f5331c2e55ba7c03090d276e55b3b5687a636245428a047
+  languageName: node
+  linkType: hard
+
 "react-native-monorepo-config@npm:^0.4.0":
   version: 0.4.0
   resolution: "react-native-monorepo-config@npm:0.4.0"
@@ -7972,6 +8001,8 @@ __metadata:
     "@babel/core": "npm:^7.25.2"
     "@babel/preset-env": "npm:^7.25.3"
     "@babel/runtime": "npm:^7.25.0"
+    "@react-native-camera-roll/camera-roll": "npm:7.10.2"
+    "@react-native-community/blur": "npm:^4.4.0"
     "@react-native-community/cli": "npm:20.1.0"
     "@react-native-community/cli-platform-android": "npm:20.1.0"
     "@react-native-community/cli-platform-ios": "npm:20.1.0"
@@ -7983,6 +8014,7 @@ __metadata:
     react: "npm:19.2.3"
     react-native: "npm:0.86.2"
     react-native-builder-bob: "npm:^0.43.0"
+    react-native-image-picker: "npm:8.2.1"
     react-native-monorepo-config: "npm:^0.4.0"
     react-native-multi-capture: "workspace:*"
     react-native-nitro-image: "npm:0.15.1"
@@ -7999,6 +8031,8 @@ __metadata:
     "@eslint/compat": "npm:^2.1.0"
     "@eslint/eslintrc": "npm:^3.3.5"
     "@eslint/js": "npm:^9.39.5"
+    "@react-native-camera-roll/camera-roll": "npm:7.10.2"
+    "@react-native-community/blur": "npm:^4.4.0"
     "@react-native/babel-preset": "npm:0.86.2"
     "@react-native/eslint-config": "npm:0.86.2"
     "@react-native/jest-preset": "npm:0.86.2"
@@ -8012,6 +8046,7 @@ __metadata:
     react: "npm:19.2.3"
     react-native: "npm:0.86.2"
     react-native-builder-bob: "npm:^0.43.0"
+    react-native-image-picker: "npm:8.2.1"
     react-native-nitro-image: "npm:0.15.1"
     react-native-nitro-modules: "npm:0.36.3"
     react-native-video: "npm:7.0.0-beta.10"
@@ -8019,8 +8054,11 @@ __metadata:
     turbo: "npm:^2.9.16"
     typescript: "npm:^6.0.3"
   peerDependencies:
+    "@react-native-camera-roll/camera-roll": ">=7.10.2 <8.0.0"
+    "@react-native-community/blur": ">=4.4.0 <5.0.0"
     react: ">=19.0.0"
     react-native: ">=0.79.0"
+    react-native-image-picker: ">=8.2.1 <9.0.0"
     react-native-nitro-image: ">=0.12.0 <1.0.0"
     react-native-nitro-modules: ">=0.29.0 <1.0.0"
     react-native-video: ">=7.0.0-beta.10 <8.0.0"

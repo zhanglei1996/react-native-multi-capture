@@ -39,6 +39,8 @@
 	<string></string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This example needs microphone access to record sound in videos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This example needs photo library access to select photos and videos.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

@@ -130,6 +130,7 @@ export interface MultiCaptureStrings {
   previewAsset: string;
   closePreview: string;
   previewLoadFailed: string;
+  libraryPickerFailed: string;
 }
 
 export interface MultiCaptureTheme {
@@ -161,6 +162,8 @@ export interface MultiCaptureCameraProps {
   enableHaptics?: boolean;
   /** Enables the built-in full-screen photo/video preview. */
   enablePreview?: boolean;
+  /** Shows the built-in system photo-library picker. */
+  enableLibraryPicker?: boolean;
   photoOutputOptions?: Partial<PhotoOutputOptions>;
   videoOutputOptions?: Partial<VideoOutputOptions>;
   photoCaptureSettings?:
@@ -168,10 +171,7 @@ export interface MultiCaptureCameraProps {
     | ((flashMode: CaptureFlashMode) => CapturePhotoSettings);
   recorderSettings?: RecorderSettings;
   cameraProps?: CaptureCameraProps;
-  /**
-   * Optional album adapter. No image-picker dependency is bundled.
-   * Return `null` when the user cancels.
-   */
+  /** Overrides the built-in system photo-library picker. */
   openLibrary?: (
     context: CaptureLibraryContext
   ) => Promise<readonly CaptureAssetInput[] | null>;

@@ -1,120 +1,125 @@
 # react-native-multi-capture
 
-一个面向现场作业场景的 React Native 连续拍照 / 录像组件。它基于
-VisionCamera 5，重点解决快速连拍、数量限制、在途任务串行化、权限、录像状态和
-最终批量确认，同时保持运行时依赖尽可能少。
+[简体中文](README.md) | [English](README.en.md)
+
+基于 VisionCamera 5 的 React Native 连续拍照 / 录像组件，适合巡检、工单、取证、
+附件采集等需要“一次拍摄多个文件”的场景。
+
+组件内置相机权限页、系统相册选择、最新照片缩略图、照片 / 视频预览、数量限制、
+录像状态和最终批量确认；宿主只需控制显示状态并处理最终文件。
+
+[安装](#安装) · [平台配置](#平台配置) · [快速开始](#快速开始) ·
+[核心 Props](#核心-props) · [高级用法](#高级用法) · [兼容性](#兼容性)
+
+## 功能概览
+
+- 连续拍照，快速点击时自动预占名额并串行调用原生相机。
+- 支持 `photo`、`video`、`mixed` 三种媒体模式。
+- 内置系统相册多选，自动遵守剩余文件数量和媒体类型。
+- 内置照片 / 视频全屏预览，可左右滑动并直接完成提交；缩略图列表支持删除。
+- 相册按钮显示系统相册最新照片；没有读取权限时回退到默认图标。
+- 完整的相机 / 麦克风权限请求、永久拒绝和无可用设备页面。
+- 前后镜头切换使用原生 BlurView，在新相机会话启动后平滑淡出。
+- 支持点按对焦、原生缩放手势、闪光灯、录像时长与文件大小限制。
+- 内置中文和英文文案，支持主题、文案、缩略图与业务处理流程覆盖。
+- 提供页面组件和受控全屏 `Modal` 两种使用方式。
 
 ## 真机演示
 
-[![React Native Multi Capture 真机演示](https://raw.githubusercontent.com/zhanglei1996/react-native-multi-capture/main/docs/media/demo-cover.png)](https://github.com/zhanglei1996/react-native-multi-capture/blob/main/docs/media/demo.mp4)
+| 界面截图 | 动态演示（点击打开 MP4） |
+| --- | --- |
+| <img src="https://raw.githubusercontent.com/zhanglei1996/react-native-multi-capture/main/docs/media/demo-cover.webp" alt="React Native Multi Capture 连拍界面" width="300" /> | [<img src="https://raw.githubusercontent.com/zhanglei1996/react-native-multi-capture/main/docs/media/demo.gif" alt="React Native Multi Capture 动态演示" width="300" />](https://github.com/zhanglei1996/react-native-multi-capture/blob/main/docs/media/demo.mp4) |
 
-点击图片播放 19 秒真机录屏。演示包含连续拍照、录像、缩略图以及照片 / 视频全屏预览。
-
-## 设计目标
-
-- 连续点击快门时，立即预占数量并串行执行原生拍照，避免并发调用相机。
-- 同时支持 `photo`、`video`、`mixed` 三种模式。
-- 相册、压缩、水印、上传前处理全部通过适配器注入，不强绑具体三方库。
-- 动画只使用 React Native 自带的 `Animated`。
-- UI 不依赖图标库、手势库或安全区库；视频预览仅使用
-  `react-native-video`。
-- 默认中文，内置 `zh-CN` / `en` 两套文案，也允许逐项覆盖。
-- 还原旧 CountCamera 的 4:3 取景、原始图标、对焦框、快门形变、缩略图进出场、
-  模式切换和录像控制层动画。
-- 提供组件模式和全屏 `Modal` 模式，完整导出 TypeScript 类型。
-- example 是真实的 React Native CLI iOS / Android 工程。
-
-## 兼容性
-
-截至 2026-07-29：
-
-| 项目                       | 范围                                           |
-| -------------------------- | ---------------------------------------------- |
-| React Native               | `>= 0.79`；example 使用 `0.86.2`               |
-| React                      | `>= 19`；example 使用 `19.2.3`                 |
-| react-native-vision-camera | `>= 5.0 < 6`；example 使用 `5.2.0`             |
-| react-native-video         | `>= 7.0.0-beta.10 < 8`；用于内置视频预览       |
-| iOS                        | `>= 15.1`；RN 0.86 example / CI 使用 Xcode 26  |
-| Android                    | 跟随 React Native 与 VisionCamera 5 的平台要求 |
-| New Architecture           | 支持；example 使用当前 RN 默认架构             |
-
-React Native 0.85 和 0.86 是编写本版本时的上游活跃版本。较旧 RN
-版本即使满足 peer range，也应在应用自己的原生构建环境中验证。VisionCamera 4
-的 API 与 5 不兼容，本库不通过运行时判断同时兼容两个大版本。
-
-VisionCamera 5 使用 Nitro 生成的 Swift / C++ bridge。RN 0.86 example 的 iOS
-构建基线是 Xcode 26；Xcode 16.2 的 `swift-frontend` 会在这些生成代码上崩溃。
+GIF 可直接在 GitHub README 中预览；点击动态演示可打开约 21 秒的 MP4。
 
 ## 安装
 
 ```bash
 yarn add react-native-multi-capture \
+  @react-native-camera-roll/camera-roll \
+  @react-native-community/blur \
+  react-native-image-picker \
   react-native-vision-camera \
   react-native-nitro-modules \
   react-native-nitro-image \
   react-native-video@7.0.0-beta.10
 ```
 
-或：
+使用 npm：
 
 ```bash
 npm install react-native-multi-capture \
+  @react-native-camera-roll/camera-roll \
+  @react-native-community/blur \
+  react-native-image-picker \
   react-native-vision-camera \
   react-native-nitro-modules \
   react-native-nitro-image \
   react-native-video@7.0.0-beta.10
 ```
 
-`react-native-video` v7 当前仍为 beta，但它与 VisionCamera 5 使用的 Media3
-版本兼容；v6 在 Android 上可能与 VisionCamera 5 产生 Media3 ABI 冲突。
-
-iOS 安装 Pods：
+iOS 安装原生依赖：
 
 ```bash
 npx pod-install
 ```
 
-### iOS 权限
+> `react-native-video` v7 当前仍为 beta，但它与 VisionCamera 5 使用的 Media3
+> 版本兼容。修改任何原生依赖或权限后都需要重新编译 App，Metro 热更新无法完成
+> 原生安装。
 
-在应用的 `Info.plist` 中添加：
+## 平台配置
+
+### iOS
+
+在宿主应用的 `Info.plist` 中按需添加：
 
 ```xml
 <key>NSCameraUsageDescription</key>
 <string>用于拍摄现场照片和视频</string>
 <key>NSMicrophoneUsageDescription</key>
 <string>用于录制带声音的视频</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>用于从相册选择照片和视频</string>
 ```
 
-如果不启用带声音录像，可不配置麦克风权限，并保持 `enableAudio={false}`。
+- `NSCameraUsageDescription`：必需。
+- `NSMicrophoneUsageDescription`：仅在 `enableAudio` 为 `true` 时需要。
+- `NSPhotoLibraryUsageDescription`：用于相册选择和读取最新照片缩略图。
 
-### Android 权限
+### Android
 
-在 `android/app/src/main/AndroidManifest.xml` 中添加：
+在 `android/app/src/main/AndroidManifest.xml` 中按需添加：
 
 ```xml
 <uses-permission android:name="android.permission.CAMERA" />
 <uses-permission android:name="android.permission.RECORD_AUDIO" />
+<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+<uses-permission
+  android:name="android.permission.READ_EXTERNAL_STORAGE"
+  android:maxSdkVersion="32" />
 ```
 
-组件只返回 VisionCamera 临时目录内的文件，不需要存储权限。相册适配器若有额外权限
-要求，请按所选相册库的说明配置。
+- `CAMERA`：必需。
+- `RECORD_AUDIO`：仅在 `enableAudio` 为 `true` 时需要。
+- 图片读取权限只用于显示最新照片缩略图。用户拒绝后会显示默认图标，不影响系统
+  Photo Picker。
+- Android `minSdkVersion < 30` 且项目没有 `androidx.activity:activity:1.9+` 时，
+  需要按 `react-native-image-picker` 文档启用 Photo Picker backport。
 
-若启用 `enableHaptics` 且未传入自定义 `onHapticFeedback`，还需声明：
+若启用 `enableHaptics` 且没有传入 `onHapticFeedback`，还需声明：
 
 ```xml
 <uses-permission android:name="android.permission.VIBRATE" />
 ```
 
-`enableHaptics` 默认关闭，避免组件在宿主未声明震动权限时产生原生异常。
+## 快速开始
 
-修改权限或原生依赖后需要重新编译 App，Metro 热更新不能完成原生安装。
-
-## 最小用法
-
-推荐使用受控的全屏 Modal：
+推荐使用受控的全屏 `MultiCaptureModal`：
 
 ```tsx
 import { useState } from 'react';
+import { Button } from 'react-native';
 import {
   MultiCaptureModal,
   type CaptureAsset,
@@ -125,12 +130,13 @@ export function WorkOrderCamera() {
 
   return (
     <>
-      <Button title="拍摄" onPress={() => setVisible(true)} />
+      <Button title="拍摄附件" onPress={() => setVisible(true)} />
 
       <MultiCaptureModal
         visible={visible}
+        mediaType="mixed"
         maxAssets={12}
-        mediaType="photo"
+        maxVideoDuration={30}
         onDone={async (assets: readonly CaptureAsset[]) => {
           await uploadWorkOrderFiles(assets);
           setVisible(false);
@@ -142,65 +148,34 @@ export function WorkOrderCamera() {
 }
 ```
 
-`onDone` 可以返回 Promise。执行期间组件会锁定冲突操作，避免重复提交。
+`onDone` 可以返回 Promise。提交期间组件会锁定冲突操作，避免重复提交。
+`enableAudio` 默认为 `false`；需要录制声音时显式传入 `enableAudio`。
 
-## 照片 + 视频
+## 内置交互
 
-```tsx
-<MultiCaptureModal
-  visible={visible}
-  mediaType="mixed"
-  enableAudio
-  maxAssets={8}
-  maxVideoDuration={30}
-  onDone={handleDone}
-  onCancel={handleCancel}
-/>
-```
+### 相册选择与预览
 
-`enableAudio` 默认为 `false`，因此纯拍照场景不会请求麦克风权限。
+相册入口默认开启，不需要传 `openLibrary`：
 
-## 中文与国际化
+- 根据 `mediaType` 和剩余数量配置系统选择器。
+- 选择结束后自动进入内置全屏预览。
+- 照片使用 `contain` 模式显示；视频自动播放并提供系统控制条。
+- 可以左右滑动查看本次会话的全部文件。
+- 预览顶部可直接完成提交。
+- 摄像头无权限或设备没有可用相机时，仍可从相册选择并完成提交。
 
-默认不需要配置即为中文：
+传入 `enableLibraryPicker={false}` 可隐藏相册入口；传入
+`enablePreview={false}` 可关闭内置预览。宿主已有媒体查看器时，可以使用
+`onPreviewAsset` 接管预览。
 
-```tsx
-<MultiCaptureModal visible={visible} ... />
-```
+### 权限页面
 
-切换内置英文：
+`autoRequestPermissions` 默认为 `true`。首次进入会请求必要权限；永久拒绝后显示
+“去开启权限”并打开系统设置。开启录音时，麦克风权限也会成为必要权限。
 
-```tsx
-<MultiCaptureModal visible={visible} locale="en" ... />
-```
+### 防误退
 
-业务可以在任一语言基础上覆盖个别文案：
-
-```tsx
-<MultiCaptureModal
-  visible={visible}
-  locale="zh-CN"
-  strings={{ done: '提交' }}
-  ...
-/>
-```
-
-也可以导入 `zhCNStrings`、`enStrings` 或 `multiCaptureLocales`，构建自己的语言包。
-
-## 照片与视频预览
-
-拍摄完成后点击底部缩略图即可进入内置全屏预览：
-
-- 照片使用 `contain` 模式查看，可左右滑动切换本次拍摄的所有文件。
-- 视频进入页面后自动播放，并提供 iOS / Android 原生播放控制。
-- 预览打开期间相机会暂停，关闭预览后自动恢复。
-
-`enablePreview` 默认为 `true`。若宿主已有统一媒体预览器，可传
-`onPreviewAsset`；此时点击缩略图会调用该回调，不再打开内置预览。
-
-## 防误退
-
-组件不内置业务风格的确认弹窗。通过 `onRequestClose` 决定是否允许关闭：
+通过 `onRequestClose` 接入宿主自己的确认弹窗：
 
 ```tsx
 <MultiCaptureModal
@@ -208,28 +183,118 @@ export function WorkOrderCamera() {
   onRequestClose={async ({ assets, isBusy }) => {
     if (isBusy) return false;
     if (assets.length === 0) return true;
-    return await showDiscardConfirm();
+    return showDiscardConfirm();
   }}
-  onCancel={() => setVisible(false)}
   onDone={handleDone}
+  onCancel={() => setVisible(false)}
 />
 ```
 
-没有提供 `onRequestClose` 时，空闲状态允许关闭，拍摄或处理中的状态拒绝关闭。
+没有提供 `onRequestClose` 时，空闲状态允许关闭，拍摄或处理中拒绝关闭。
 
-## 相册适配器
+### 中文、英文与主题
 
-本库不依赖任何 image picker。宿主应用把已有相册库转换为统一的数据结构即可：
+界面默认使用中文。切换内置英文：
+
+```tsx
+<MultiCaptureModal locale="en" {...props} />
+```
+
+覆盖部分文案或颜色：
 
 ```tsx
 <MultiCaptureModal
-  visible={visible}
-  openLibrary={async ({ remaining, mediaType }) => {
-    const picked = await yourPicker({
-      limit: remaining,
-      mediaType,
-    });
+  strings={{ done: '提交' }}
+  theme={{ accentColor: '#4F8CFF' }}
+  {...props}
+/>
+```
 
+也可以导入 `zhCNStrings`、`enStrings`、`multiCaptureLocales` 和
+`defaultTheme` 构建自己的配置。
+
+## 核心 Props
+
+| Prop | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `maxAssets` | `number` | `10` | 已完成文件与在途任务的共同上限 |
+| `mediaType` | `'photo' \| 'video' \| 'mixed'` | `'photo'` | 可用媒体类型 |
+| `initialMode` | `'photo' \| 'video'` | `'photo'` | mixed 模式初始页签；video 模式固定为 video |
+| `initialCameraPosition` | `'front' \| 'back'` | `'back'` | 初始摄像头 |
+| `initialAssets` | `CaptureAssetInput[]` | `[]` | 会话初始文件 |
+| `enableAudio` | `boolean` | `false` | 录像是否录音 |
+| `enablePreview` | `boolean` | `true` | 内置照片 / 视频预览 |
+| `enableLibraryPicker` | `boolean` | `true` | 系统相册入口与最新照片缩略图 |
+| `enableHaptics` | `boolean` | `false` | 使用 RN Vibration 提供快门触觉反馈 |
+| `maxVideoDuration` | `number` | - | 单段录像最大秒数 |
+| `maxVideoFileSize` | `number` | - | 单段录像最大字节数 |
+| `openLibrary` | `function` | - | 覆盖内置系统选择器 |
+| `processAsset` | `function` | - | 串行处理捕获或选择的文件 |
+| `onPreviewAsset` | `function` | - | 使用宿主预览器代替内置预览 |
+| `onAssetsChange` | `function` | - | 文件增加或删除后的回调 |
+| `onDone` | `function` | 必填 | 完成回调，可异步 |
+| `onCancel` | `function` | 必填 | 关闭回调 |
+| `onRequestClose` | `function` | - | 防误退判定 |
+| `onError` | `function` | - | 结构化错误回调 |
+| `locale` | `'zh-CN' \| 'en'` | `'zh-CN'` | 内置语言 |
+| `strings` | `Partial<MultiCaptureStrings>` | - | 文案覆盖 |
+| `theme` | `Partial<MultiCaptureTheme>` | 深色 | 颜色覆盖 |
+
+完整接口见 [中文 API 参考](docs/API.zh-CN.md)。
+
+## 返回数据
+
+```ts
+interface CaptureAsset {
+  id: string;
+  uri: string;
+  path: string;
+  type: 'photo' | 'video';
+  fileName: string;
+  mimeType: string;
+  width?: number;
+  height?: number;
+  duration?: number;
+  size?: number;
+  metadata?: Readonly<Record<string, unknown>>;
+}
+```
+
+VisionCamera 捕获结果位于临时目录。库不会自动移动或删除这些文件；上传后的持久化、
+移动和清理策略由宿主负责。视频 `duration` 是组件记录的近似秒数，如需精确元数据，
+可在 `processAsset` 中补齐。
+
+## 高级用法
+
+### 压缩、水印或上传前处理
+
+`processAsset` 会在文件加入列表前执行，并与拍照任务串行：
+
+```tsx
+<MultiCaptureModal
+  processAsset={async (asset) => {
+    if (asset.type !== 'photo') return asset;
+
+    const compressed = await compressPhoto(asset.path);
+    return {
+      ...asset,
+      path: compressed.path,
+      uri: `file://${compressed.path}`,
+      size: compressed.size,
+    };
+  }}
+  {...props}
+/>
+```
+
+### 覆盖系统相册选择器
+
+宿主已有定制相册时，可以通过 `openLibrary` 返回统一的 `CaptureAssetInput`：
+
+```tsx
+<MultiCaptureModal
+  openLibrary={async ({ remaining, mediaType }) => {
+    const picked = await yourPicker({ limit: remaining, mediaType });
     if (picked.cancelled) return null;
 
     return picked.files.map((file) => ({
@@ -242,88 +307,13 @@ export function WorkOrderCamera() {
       height: file.height,
     }));
   }}
-  onDone={handleDone}
-  onCancel={handleCancel}
+  {...props}
 />
 ```
 
-只有传入 `openLibrary` 时，界面才显示相册入口。
+自定义结果同样经过媒体类型过滤、数量限制、`processAsset` 和预览流程。
 
-## 压缩、水印或上传前处理
-
-`processAsset` 位于串行捕获链内部。处理完成前文件处于“在途”状态，不会提前允许
-完成提交：
-
-```tsx
-<MultiCaptureModal
-  visible={visible}
-  processAsset={async (asset) => {
-    if (asset.type !== 'photo') return asset;
-
-    const compressed = await compressPhoto(asset.path);
-    return {
-      ...asset,
-      path: compressed.path,
-      uri: `file://${compressed.path}`,
-      size: compressed.size,
-    };
-  }}
-  onDone={handleDone}
-  onCancel={handleCancel}
-/>
-```
-
-库本身不删除原文件或处理后文件。上传成功后的持久化、移动与清理策略由宿主应用负责。
-
-## 返回数据
-
-```ts
-interface CaptureAsset {
-  id: string;
-  uri: string; // 适合 React Native Image / 上传库
-  path: string; // 去掉 file:// 的路径；非 file URI 会原样保留
-  type: 'photo' | 'video';
-  fileName: string;
-  mimeType: string;
-  width?: number;
-  height?: number;
-  duration?: number;
-  size?: number;
-  metadata?: Readonly<Record<string, unknown>>;
-}
-```
-
-VisionCamera 5 的 `capturePhotoToFile()` 和 Recorder 都返回临时文件路径。视频
-`duration` 是组件记录的近似秒数；如上传接口需要精确媒体元数据，可在
-`processAsset` 中用宿主已有的媒体工具补齐。
-
-## 核心 Props
-
-| Prop                    | 类型                            | 默认值    | 说明                               |
-| ----------------------- | ------------------------------- | --------- | ---------------------------------- |
-| `maxAssets`             | `number`                        | `10`      | 最终文件与在途文件的共同上限       |
-| `mediaType`             | `'photo' \| 'video' \| 'mixed'` | `'photo'` | 可用媒体类型                       |
-| `initialMode`           | `'photo' \| 'video'`            | `'photo'` | mixed 模式初始页签                 |
-| `initialCameraPosition` | `'front' \| 'back'`             | `'back'`  | 初始摄像头                         |
-| `enableAudio`           | `boolean`                       | `false`   | 录像是否录音                       |
-| `enableHaptics`         | `boolean`                       | `false`   | 使用 RN Vibration 恢复快门轻触反馈 |
-| `enablePreview`         | `boolean`                       | `true`    | 内置照片/视频全屏预览              |
-| `maxVideoDuration`      | `number`                        | -         | 单段录像最大秒数                   |
-| `openLibrary`           | `function`                      | -         | 可选相册适配器                     |
-| `processAsset`          | `function`                      | -         | 串行文件处理适配器                 |
-| `onPreviewAsset`        | `function`                      | -         | 覆盖内置预览并交给宿主媒体预览器   |
-| `onAssetsChange`        | `function`                      | -         | 增删或处理完成时回调               |
-| `onDone`                | `function`                      | 必填      | 完成回调，可异步                   |
-| `onCancel`              | `function`                      | 必填      | 关闭回调                           |
-| `onRequestClose`        | `function`                      | -         | 防误退判定                         |
-| `onError`               | `function`                      | -         | 结构化错误回调                     |
-| `locale`                | `'zh-CN' \| 'en'`               | `'zh-CN'` | 内置语言                           |
-| `strings`               | `Partial<MultiCaptureStrings>`  | -         | 在当前语言上覆盖文案               |
-| `theme`                 | `Partial<MultiCaptureTheme>`    | 深色      | 颜色覆盖                           |
-
-完整接口见 [docs/API.zh-CN.md](docs/API.zh-CN.md)。
-
-## 直接作为页面使用
+### 直接作为页面使用
 
 ```tsx
 import { MultiCaptureCamera } from 'react-native-multi-capture';
@@ -340,34 +330,49 @@ export function CameraScreen() {
 }
 ```
 
-组件会同时监听 Android 硬件返回键。若使用 `MultiCaptureModal`，Modal 的
-`onRequestClose` 会通过组件 ref 进入同一关闭流程。
+## 并发与生命周期保证
 
-## 并发和状态保证
+1. 快门按下时同步预占数量，连续点击不会突破 `maxAssets`。
+2. 拍照和 `processAsset` 共用串行 Promise 链，不会并发调用原生拍照。
+3. `onDone` 等待照片处理链结束；录像、相册选择、镜头切换和提交会互斥。
+4. 每段视频使用新的 VisionCamera Recorder。
+5. 预览或 App 进入后台时暂停相机，返回前台后按条件恢复。
+6. 卸载时取消仍在录制的视频，并阻止异步结果继续更新状态。
 
-1. 点击快门时先同步增加 `pendingCount`，后续快速点击立即看到已占用名额。
-2. 所有照片捕获与 `processAsset` 进入同一个 Promise 链，原生拍照不会并发。
-3. `onDone` 会等待照片链完成；录像、相册选择和提交期间会锁定冲突操作。
-4. 每段视频使用新的 VisionCamera Recorder，符合 V5 Recorder 只能使用一次的要求。
-5. 卸载时会取消仍在录制的视频，并阻止异步结果继续更新 React 状态。
+## 兼容性
+
+| 项目 | 支持范围 |
+| --- | --- |
+| React Native | `>= 0.79`；example 使用 `0.86.2` |
+| React | `>= 19`；example 使用 `19.2.3` |
+| react-native-vision-camera | `>= 5.0 < 6`；example 使用 `5.2.0` |
+| react-native-video | `>= 7.0.0-beta.10 < 8` |
+| react-native-image-picker | `>= 8.2.1 < 9` |
+| @react-native-camera-roll/camera-roll | `>= 7.10.2 < 8` |
+| @react-native-community/blur | `>= 4.4 < 5` |
+| iOS | `>= 15.1` |
+| New Architecture | 支持；example 使用 RN 默认新架构 |
+
+VisionCamera 4 与 5 的 API 不兼容，本库仅支持 VisionCamera 5。VisionCamera 5
+使用 Nitro 生成的 Swift / C++ bridge，请在宿主应用的 Xcode、NDK 和 React Native
+组合中验证原生构建。
 
 ## 从旧 CountCamera 迁移
 
-| 旧概念                       | 新 API                                   |
-| ---------------------------- | ---------------------------------------- |
-| `maxFiles`                   | `maxAssets`                              |
-| `mediaType="any"`            | `mediaType="mixed"`                      |
-| `cameraMode="multiple"`      | 默认就是连续拍摄                         |
-| `cameraMode="single"`        | 使用 `maxAssets={1}`，在 `onDone` 中确认 |
-| `defaultCameraPos`           | `initialCameraPosition`                  |
-| `onSuccess`                  | `onDone`                                 |
-| 内置 ImageCropPicker         | `openLibrary` 适配器                     |
-| 内置 compressPhoto           | `processAsset` 适配器                    |
-| Reanimated / Gesture Handler | RN Animated / VisionCamera 原生手势      |
-| `openCountCamera()` 全局命令 | 受控 `MultiCaptureModal`                 |
+| 旧概念 | 新 API |
+| --- | --- |
+| `maxFiles` | `maxAssets` |
+| `mediaType="any"` | `mediaType="mixed"` |
+| `cameraMode="multiple"` | 默认连续拍摄 |
+| `cameraMode="single"` | `maxAssets={1}` |
+| `defaultCameraPos` | `initialCameraPosition` |
+| `onSuccess` | `onDone` |
+| ImageCropPicker | 内置系统选择器；`openLibrary` 可覆盖 |
+| `compressPhoto` | `processAsset` |
+| Reanimated / Gesture Handler | RN Animated / VisionCamera 原生手势 |
+| `openCountCamera()` | 受控 `MultiCaptureModal` |
 
-旧组件中的条码识别属于独立能力。VisionCamera 5 已把扫码拆为单独包，因此本库没有
-默认引入扫码依赖；业务需要时可在上层组合扫码流程。
+旧组件的条码识别属于独立能力，本库不默认引入扫码依赖。
 
 ## 运行 example
 
@@ -385,19 +390,19 @@ corepack yarn example ios
 corepack yarn example android
 ```
 
-相机功能必须在真机测试。模拟器可用于检查权限页和非相机 UI，但不能代表真实捕获。
+相机捕获必须在真机测试。模拟器只适合检查权限页和非相机 UI。
 
 ## 开发验证
 
 ```bash
-corepack yarn typecheck
 corepack yarn lint
+corepack yarn typecheck
 corepack yarn test
 corepack yarn prepare
 corepack yarn pack:check
 ```
 
-架构和扩展点见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+更多实现说明见 [架构文档](docs/ARCHITECTURE.md)。
 
 ## License
 

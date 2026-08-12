@@ -125,13 +125,6 @@ export default function App() {
         maxAssets={8}
         maxVideoDuration={30}
         mediaType={mediaType}
-        openLibrary={async () => {
-          Alert.alert(
-            '相册适配器',
-            '组件本身不绑定图片选择库；请通过 openLibrary 接入项目已有的相册选择器。'
-          );
-          return null;
-        }}
         onCancel={() => setVisible(false)}
         onDone={(nextAssets) => {
           setAssets(nextAssets);

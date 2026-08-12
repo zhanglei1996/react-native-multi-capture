@@ -10,7 +10,9 @@ import {
 import {
   Animated,
   BackHandler,
+  Easing,
   Image,
+  PermissionsAndroid,
   Platform,
   Pressable,
   SafeAreaView,
@@ -21,6 +23,9 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import type { GestureResponderEvent } from 'react-native';
+import { CameraRoll } from '@react-native-camera-roll/camera-roll';
+import { BlurView } from '@react-native-community/blur';
+import { launchImageLibrary } from 'react-native-image-picker';
 import {
   Camera,
   useCameraDevice,
@@ -50,6 +55,7 @@ import {
   createMultiCaptureError,
   getErrorMessage,
 } from './core/errors';
+import { imagePickerAssetToCaptureInput } from './core/library';
 import { defaultTheme, multiCaptureLocales } from './defaults';
 import { cameraIcons } from './icons';
 import { useAppActive } from './hooks/useAppActive';
@@ -115,6 +121,7 @@ function MultiCaptureCameraImpl(
     enableTapToFocus = true,
     enableHaptics = false,
     enablePreview = true,
+    enableLibraryPicker = true,
     photoOutputOptions,
     videoOutputOptions,
     photoCaptureSettings,
@@ -162,11 +169,13 @@ function MultiCaptureCameraImpl(
   const [isCompleting, setIsCompleting] = useState(false);
   const [isPickingLibrary, setIsPickingLibrary] = useState(false);
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
+  const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
   const [cameraStarted, setCameraStarted] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>();
   const [deviceLookupComplete, setDeviceLookupComplete] = useState(false);
   const [focusPoint, setFocusPoint] = useState<FocusPoint>();
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const [libraryThumbnailUri, setLibraryThumbnailUri] = useState<string>();
   const [headerAreaHeight, setHeaderAreaHeight] = useState(
     60 + (Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0)
   );
@@ -184,9 +193,15 @@ function MultiCaptureCameraImpl(
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   );
+  const switchTransitionTimerRef = useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined);
+  const switchInFlightRef = useRef(false);
+  const switchRevealStartedRef = useRef(false);
   const closeInFlightRef = useRef(false);
   const cameraUnavailableReportedRef = useRef(false);
   const permissionDeniedReportedRef = useRef(false);
+  const libraryPermissionRequestedRef = useRef(false);
   const mountedRef = useRef(true);
   const cameraRef = useRef<CameraRef>(null);
   const callbacksRef = useRef({
@@ -215,7 +230,7 @@ function MultiCaptureCameraImpl(
   ).current;
   const recordingControlsProgress = useRef(new Animated.Value(0)).current;
   const recordingBadgeProgress = useRef(new Animated.Value(0)).current;
-  const switchVeilOpacity = useRef(new Animated.Value(0)).current;
+  const switchBlurOpacity = useRef(new Animated.Value(0)).current;
   const messageOpacity = useRef(new Animated.Value(0)).current;
   const messageScale = useRef(new Animated.Value(0.94)).current;
 
@@ -246,8 +261,46 @@ function MultiCaptureCameraImpl(
   const isRecording = recordingState === 'recording';
   const isRecordingBusy = recordingState !== 'idle';
   const isBusy =
-    pendingCount > 0 || isRecordingBusy || isCompleting || isPickingLibrary;
+    pendingCount > 0 ||
+    isRecordingBusy ||
+    isCompleting ||
+    isPickingLibrary ||
+    isSwitchingCamera;
   const isAtLimit = assets.length + pendingCount >= maxAssets;
+
+  const refreshLibraryThumbnail = useCallback(async () => {
+    if (!enableLibraryPicker) return;
+    try {
+      if (Platform.OS === 'android') {
+        const permission =
+          Number(Platform.Version) >= 33
+            ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES
+            : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
+        let granted = await PermissionsAndroid.check(permission);
+        if (!granted && !libraryPermissionRequestedRef.current) {
+          libraryPermissionRequestedRef.current = true;
+          granted =
+            (await PermissionsAndroid.request(permission)) ===
+            PermissionsAndroid.RESULTS.GRANTED;
+        }
+        if (!granted) return;
+      }
+      const result = await CameraRoll.getPhotos({
+        assetType: 'Photos',
+        first: 1,
+      });
+      const uri = result.edges[0]?.node.image.uri;
+      if (mountedRef.current && uri) setLibraryThumbnailUri(uri);
+    } catch {
+      // The thumbnail is optional. The system picker still works when the user
+      // grants limited access or declines full photo-library access.
+    }
+  }, [enableLibraryPicker]);
+
+  useEffect(() => {
+    if (!appIsActive || !hasRequiredPermissions) return;
+    void refreshLibraryThumbnail();
+  }, [appIsActive, hasRequiredPermissions, refreshLibraryThumbnail]);
 
   const showMessage = useCallback(
     (message: string) => {
@@ -593,7 +646,12 @@ function MultiCaptureCameraImpl(
   }, [capturePhoto, isRecording, mode, startRecording, stopRecording]);
 
   const complete = useCallback(async () => {
-    if (isRecordingBusy || isPickingLibrary || isCompleting) {
+    if (
+      isRecordingBusy ||
+      isPickingLibrary ||
+      isSwitchingCamera ||
+      isCompleting
+    ) {
       showMessage(
         recordingState === 'stopping'
           ? strings.stoppingRecording
@@ -620,6 +678,7 @@ function MultiCaptureCameraImpl(
     isCompleting,
     isPickingLibrary,
     isRecordingBusy,
+    isSwitchingCamera,
     recordingState,
     animateDismiss,
     emitError,
@@ -637,6 +696,7 @@ function MultiCaptureCameraImpl(
         pendingCountRef.current > 0 ||
         recordingState !== 'idle' ||
         isPickingLibrary ||
+        isSwitchingCamera ||
         isCompleting;
       const request = callbacksRef.current.onRequestClose;
       const allowed = request
@@ -672,6 +732,7 @@ function MultiCaptureCameraImpl(
     emitError,
     isCompleting,
     isPickingLibrary,
+    isSwitchingCamera,
     recordingState,
     releaseRecordingReservation,
     showMessage,
@@ -679,19 +740,43 @@ function MultiCaptureCameraImpl(
   ]);
 
   const pickFromLibrary = useCallback(async () => {
-    if (!openLibrary || isBusy || assetsRef.current.length >= maxAssets) {
+    if (
+      !enableLibraryPicker ||
+      isBusy ||
+      assetsRef.current.length >= maxAssets
+    ) {
       return;
     }
     setIsPickingLibrary(true);
+    let previewTarget: { asset: CaptureAsset; index: number } | undefined;
     try {
-      const result = await openLibrary({
+      const context = {
         assets: [...assetsRef.current],
         remaining: maxAssets - assetsRef.current.length,
         mediaType,
-      });
+      } as const;
+      const result = openLibrary
+        ? await openLibrary(context)
+        : await (async () => {
+            const response = await launchImageLibrary({
+              assetRepresentationMode: 'compatible',
+              includeExtra: false,
+              mediaType,
+              presentationStyle: 'fullScreen',
+              selectionLimit: context.remaining,
+            });
+            if (response.didCancel) return null;
+            if (response.errorCode) {
+              throw new Error(response.errorMessage || `${response.errorCode}`);
+            }
+            return (response.assets ?? [])
+              .map(imagePickerAssetToCaptureInput)
+              .filter((asset): asset is CaptureAssetInput => Boolean(asset));
+          })();
       if (!result) return;
 
       const remaining = maxAssets - assetsRef.current.length;
+      const firstNewIndex = assetsRef.current.length;
       const accepted: CaptureAsset[] = [];
       for (const input of result) {
         try {
@@ -712,23 +797,50 @@ function MultiCaptureCameraImpl(
           );
         }
       }
-      commitAssets(appendWithinLimit(assetsRef.current, accepted, maxAssets));
+      const nextAssets = appendWithinLimit(
+        assetsRef.current,
+        accepted,
+        maxAssets
+      );
+      commitAssets(nextAssets);
+      const firstNewAsset = nextAssets[firstNewIndex];
+      if (firstNewAsset) {
+        previewTarget = { asset: firstNewAsset, index: firstNewIndex };
+      }
       if (accepted.length > remaining) {
         emitError('limit-reached', strings.maxReached);
       }
+      void refreshLibraryThumbnail();
     } catch (error) {
-      emitError('library-picker-failed', getErrorMessage(error), error);
+      emitError('library-picker-failed', strings.libraryPickerFailed, error);
     } finally {
-      if (mountedRef.current) setIsPickingLibrary(false);
+      if (mountedRef.current) {
+        setIsPickingLibrary(false);
+        if (previewTarget) {
+          requestAnimationFrame(() => {
+            if (!mountedRef.current || !previewTarget) return;
+            if (onPreviewAsset) {
+              onPreviewAsset(previewTarget.asset, previewTarget.index);
+            } else if (enablePreview) {
+              setPreviewIndex(previewTarget.index);
+            }
+          });
+        }
+      }
     }
   }, [
     commitAssets,
+    enableLibraryPicker,
+    enablePreview,
     emitError,
     isBusy,
     maxAssets,
     mediaType,
+    onPreviewAsset,
     openLibrary,
     processCapturedAsset,
+    refreshLibraryThumbnail,
+    strings.libraryPickerFailed,
     strings.maxReached,
   ]);
 
@@ -797,25 +909,64 @@ function MultiCaptureCameraImpl(
     });
   }, [showMessage, strings.flashDisabled, strings.flashEnabled]);
 
+  const finishCameraSwitch = useCallback(() => {
+    if (switchTransitionTimerRef.current) {
+      clearTimeout(switchTransitionTimerRef.current);
+      switchTransitionTimerRef.current = undefined;
+    }
+    switchInFlightRef.current = false;
+    switchRevealStartedRef.current = false;
+    switchBlurOpacity.stopAnimation();
+    switchBlurOpacity.setValue(0);
+    if (mountedRef.current) setIsSwitchingCamera(false);
+  }, [switchBlurOpacity]);
+
+  const revealCameraSwitch = useCallback(() => {
+    if (!switchInFlightRef.current || switchRevealStartedRef.current) return;
+    switchRevealStartedRef.current = true;
+    if (switchTransitionTimerRef.current) {
+      clearTimeout(switchTransitionTimerRef.current);
+      switchTransitionTimerRef.current = undefined;
+    }
+    Animated.timing(switchBlurOpacity, {
+      toValue: 0,
+      duration: 210,
+      easing: Easing.inOut(Easing.cubic),
+      useNativeDriver: true,
+    }).start(finishCameraSwitch);
+  }, [finishCameraSwitch, switchBlurOpacity]);
+
   const switchCamera = useCallback(() => {
-    if (isBusy || !alternativeDevice) return;
-    switchVeilOpacity.stopAnimation();
-    switchVeilOpacity.setValue(0);
-    Animated.sequence([
-      Animated.timing(switchVeilOpacity, {
-        toValue: 0.72,
-        duration: 80,
-        useNativeDriver: true,
-      }),
-      Animated.timing(switchVeilOpacity, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    setCameraStarted(false);
-    setCameraPosition(alternativePosition);
-  }, [alternativeDevice, alternativePosition, isBusy, switchVeilOpacity]);
+    if (isBusy || switchInFlightRef.current || !alternativeDevice) return;
+    switchInFlightRef.current = true;
+    switchRevealStartedRef.current = false;
+    setIsSwitchingCamera(true);
+    switchBlurOpacity.stopAnimation();
+    switchBlurOpacity.setValue(0);
+    Animated.timing(switchBlurOpacity, {
+      toValue: 1,
+      duration: 90,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (!finished || !mountedRef.current) {
+        finishCameraSwitch();
+        return;
+      }
+      setCameraPosition(alternativePosition);
+      // Prefer the real camera-session start signal. Some devices do not emit
+      // it during a device swap, so the short fallback still guarantees that
+      // controls unlock and the blur is removed.
+      switchTransitionTimerRef.current = setTimeout(revealCameraSwitch, 280);
+    });
+  }, [
+    alternativeDevice,
+    alternativePosition,
+    finishCameraSwitch,
+    isBusy,
+    revealCameraSwitch,
+    switchBlurOpacity,
+  ]);
 
   useImperativeHandle(
     ref,
@@ -837,8 +988,11 @@ function MultiCaptureCameraImpl(
   }, [rootTranslateY]);
 
   useEffect(() => {
+    // Reveal controls after the initial session starts, then keep them visible.
+    // Device swaps can emit `onStopped` without a matching `onStarted`.
+    if (!cameraStarted) return;
     Animated.timing(controlsOpacity, {
-      toValue: cameraStarted ? 1 : 0,
+      toValue: 1,
       duration: 180,
       useNativeDriver: true,
     }).start();
@@ -953,11 +1107,16 @@ function MultiCaptureCameraImpl(
       mountedRef.current = false;
       clearRecordingTimer();
       if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+      if (switchTransitionTimerRef.current) {
+        clearTimeout(switchTransitionTimerRef.current);
+      }
+      switchInFlightRef.current = false;
+      switchBlurOpacity.stopAnimation();
       if (recorderRef.current?.isRecording) {
         void recorderRef.current.cancelRecording().catch(() => {});
       }
     },
-    [clearRecordingTimer]
+    [clearRecordingTimer, switchBlurOpacity]
   );
 
   const permissionMessage = !cameraPermission.hasPermission
@@ -978,6 +1137,7 @@ function MultiCaptureCameraImpl(
     !cameraStarted ||
     isCompleting ||
     isPickingLibrary ||
+    isSwitchingCamera ||
     recordingState === 'starting' ||
     recordingState === 'stopping' ||
     (isAtLimit && !isRecording);
@@ -1026,39 +1186,99 @@ function MultiCaptureCameraImpl(
     void cameraRef.current?.focusTo({ x, y }).catch(() => {});
   };
 
+  const assetPreview = (
+    <AssetPreview
+      assets={assets}
+      initialIndex={previewIndex ?? 0}
+      isCompleting={isCompleting}
+      onClose={() => setPreviewIndex(null)}
+      onDone={() => void complete()}
+      strings={strings}
+      testID={testID}
+      theme={theme}
+      visible={previewIndex !== null}
+    />
+  );
+
   if (!hasRequiredPermissions) {
     return (
-      <PermissionState
-        canRequest={canRequestPermission}
-        isRequesting={isRequestingPermission}
-        message={permissionMessage}
-        onClose={() => void requestClose()}
-        onOpenLibrary={openLibrary ? () => void pickFromLibrary() : undefined}
-        onRequest={() => void requestPermissions()}
-        strings={strings}
-        theme={theme}
-      />
+      <>
+        <PermissionState
+          canRequest={canRequestPermission}
+          assetCount={assets.length}
+          isCompleting={isCompleting}
+          isRequesting={isRequestingPermission}
+          message={permissionMessage}
+          onClose={() => void requestClose()}
+          onDone={() => void complete()}
+          onOpenLibrary={
+            enableLibraryPicker ? () => void pickFromLibrary() : undefined
+          }
+          onRequest={() => void requestPermissions()}
+          strings={strings}
+          theme={theme}
+        />
+        {assetPreview}
+      </>
     );
   }
 
   if (!device) {
     return (
-      <View
-        style={[styles.unavailable, { backgroundColor: theme.backgroundColor }]}
-      >
-        <Text style={[styles.unavailableText, { color: theme.textColor }]}>
-          {deviceLookupComplete
-            ? strings.cameraUnavailable
-            : strings.processing}
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => void requestClose()}
-          style={styles.unavailableClose}
+      <>
+        <View
+          style={[
+            styles.unavailable,
+            { backgroundColor: theme.backgroundColor },
+          ]}
         >
-          <Text style={{ color: theme.accentColor }}>{strings.cancel}</Text>
-        </Pressable>
-      </View>
+          <Text style={[styles.unavailableText, { color: theme.textColor }]}>
+            {deviceLookupComplete
+              ? strings.cameraUnavailable
+              : strings.processing}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void requestClose()}
+            style={styles.unavailableClose}
+          >
+            <Text style={{ color: theme.accentColor }}>{strings.cancel}</Text>
+          </Pressable>
+          {enableLibraryPicker ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void pickFromLibrary()}
+              style={[
+                styles.unavailableLibrary,
+                { borderColor: theme.accentColor },
+              ]}
+            >
+              <Text style={{ color: theme.accentColor }}>
+                {strings.selectFromLibrary}
+              </Text>
+            </Pressable>
+          ) : null}
+          {assets.length > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              disabled={isCompleting}
+              onPress={() => void complete()}
+              style={[
+                styles.unavailableDone,
+                {
+                  backgroundColor: theme.accentColor,
+                  opacity: isCompleting ? 0.62 : 1,
+                },
+              ]}
+            >
+              <Text style={{ color: theme.textColor }}>
+                {strings.done} ({assets.length})
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+        {assetPreview}
+      </>
     );
   }
 
@@ -1096,10 +1316,13 @@ function MultiCaptureCameraImpl(
           }}
           onStarted={() => {
             setCameraStarted(true);
+            if (switchInFlightRef.current) {
+              requestAnimationFrame(revealCameraSwitch);
+            }
             cameraProps?.onStarted?.();
           }}
           onStopped={() => {
-            setCameraStarted(false);
+            if (!cameraIsActive) setCameraStarted(false);
             cameraProps?.onStopped?.();
           }}
           outputs={outputs}
@@ -1112,14 +1335,19 @@ function MultiCaptureCameraImpl(
           point={focusPoint}
           theme={theme}
         />
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            StyleSheet.absoluteFill,
-            styles.switchVeil,
-            { opacity: switchVeilOpacity },
-          ]}
-        />
+        {isSwitchingCamera ? (
+          <Animated.View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { opacity: switchBlurOpacity }]}
+          >
+            <BlurView
+              blurAmount={50}
+              blurType="light"
+              reducedTransparencyFallbackColor="white"
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
+        ) : null}
       </Animated.View>
 
       <Animated.View
@@ -1215,9 +1443,7 @@ function MultiCaptureCameraImpl(
               },
             ]}
           >
-            <Text style={[styles.messageText, { color: theme.textColor }]}>
-              {statusMessage}
-            </Text>
+            <Text style={styles.messageText}>{statusMessage}</Text>
           </Animated.View>
         ) : null}
 
@@ -1307,7 +1533,7 @@ function MultiCaptureCameraImpl(
 
               <View style={styles.actionRow}>
                 <View style={styles.sideAction}>
-                  {openLibrary ? (
+                  {enableLibraryPicker ? (
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={strings.openLibrary}
@@ -1317,7 +1543,11 @@ function MultiCaptureCameraImpl(
                       testID={`${testID}-library`}
                     >
                       <Image
-                        source={cameraIcons.photoDefault}
+                        source={
+                          libraryThumbnailUri
+                            ? { uri: libraryThumbnailUri }
+                            : cameraIcons.photoDefault
+                        }
                         style={styles.libraryIcon}
                       />
                     </Pressable>
@@ -1371,15 +1601,7 @@ function MultiCaptureCameraImpl(
         </SafeAreaView>
       </Animated.View>
 
-      <AssetPreview
-        assets={assets}
-        initialIndex={previewIndex ?? 0}
-        onClose={() => setPreviewIndex(null)}
-        strings={strings}
-        testID={testID}
-        theme={theme}
-        visible={previewIndex !== null}
-      />
+      {assetPreview}
     </Animated.View>
   );
 }
@@ -1397,9 +1619,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     overflow: 'hidden',
-  },
-  switchVeil: {
-    backgroundColor: '#FFFFFF',
   },
   controls: {
     position: 'absolute',
@@ -1480,8 +1699,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   messageText: {
+    color: '#FFFFFF',
     fontSize: 13,
+    fontWeight: '600',
     textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   footerSafeArea: {
     position: 'absolute',
@@ -1584,5 +1808,22 @@ const styles = StyleSheet.create({
     marginTop: 22,
     paddingHorizontal: 18,
     paddingVertical: 10,
+  },
+  unavailableLibrary: {
+    height: 44,
+    marginTop: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unavailableDone: {
+    height: 44,
+    marginTop: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

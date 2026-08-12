@@ -16,8 +16,11 @@ interface PermissionStateProps {
   message: string;
   canRequest: boolean;
   isRequesting: boolean;
+  isCompleting?: boolean;
+  assetCount?: number;
   onRequest: () => void;
   onClose: () => void;
+  onDone?: () => void;
   onOpenLibrary?: () => void;
   strings: MultiCaptureStrings;
   theme: MultiCaptureTheme;
@@ -27,8 +30,11 @@ export function PermissionState({
   message,
   canRequest,
   isRequesting,
+  isCompleting = false,
+  assetCount = 0,
   onRequest,
   onClose,
+  onDone,
   onOpenLibrary,
   strings,
   theme,
@@ -85,18 +91,49 @@ export function PermissionState({
         </Pressable>
       </View>
 
-      {onOpenLibrary ? (
+      {onOpenLibrary || (assetCount > 0 && onDone) ? (
         <SafeAreaView style={styles.bottomSafeArea}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={strings.openLibrary}
-            onPress={onOpenLibrary}
-            style={[styles.libraryButton, { borderColor: theme.accentColor }]}
-          >
-            <Text style={[styles.libraryText, { color: theme.accentColor }]}>
-              {strings.selectFromLibrary}
-            </Text>
-          </Pressable>
+          <View style={styles.bottomActions}>
+            {onOpenLibrary ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={strings.openLibrary}
+                disabled={isCompleting}
+                onPress={onOpenLibrary}
+                style={[
+                  styles.bottomButton,
+                  styles.libraryButton,
+                  { borderColor: theme.accentColor },
+                ]}
+              >
+                <Text
+                  style={[styles.libraryText, { color: theme.accentColor }]}
+                >
+                  {strings.selectFromLibrary}
+                </Text>
+              </Pressable>
+            ) : null}
+            {assetCount > 0 && onDone ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={strings.done}
+                disabled={isCompleting}
+                onPress={onDone}
+                style={[
+                  styles.bottomButton,
+                  styles.doneButton,
+                  {
+                    backgroundColor: theme.accentColor,
+                    opacity: isCompleting ? 0.62 : 1,
+                  },
+                ]}
+              >
+                <Text style={[styles.libraryText, { color: theme.textColor }]}>
+                  {strings.done} ({assetCount})
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
         </SafeAreaView>
       ) : null}
     </View>
@@ -150,16 +187,27 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   bottomSafeArea: {
-    alignItems: 'center',
     paddingBottom: 30,
   },
-  libraryButton: {
-    width: 156.5,
+  bottomActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    paddingHorizontal: 24,
+  },
+  bottomButton: {
+    flex: 1,
+    maxWidth: 180,
     height: 49,
     borderRadius: 8,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  libraryButton: {
+    borderWidth: 1,
+  },
+  doneButton: {
+    paddingHorizontal: 12,
   },
   libraryText: {
     fontSize: 17,

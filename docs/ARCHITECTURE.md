@@ -2,19 +2,23 @@
 
 ## Dependency boundary
 
-Runtime peers are limited to React, React Native, VisionCamera 5's required
-Nitro packages, and the built-in preview player:
+Runtime peers cover React Native, VisionCamera 5's required Nitro packages,
+the system-library bridge, the camera-switch blur layer, and the built-in
+preview player:
 
 - `react`
 - `react-native`
 - `react-native-vision-camera`
 - `react-native-nitro-modules`
 - `react-native-nitro-image`
+- `react-native-image-picker`
+- `@react-native-camera-roll/camera-roll`
+- `@react-native-community/blur`
 - `react-native-video`
 
-There is no bundled picker, filesystem, compressor, icon set, safe-area
-package, gesture handler, or animation runtime. Hosts can replace the built-in
-preview through `onPreviewAsset`.
+There is no bundled filesystem, compressor, icon set, safe-area package,
+gesture handler, or separate animation runtime. Hosts can replace the built-in
+picker through `openLibrary` and the preview through `onPreviewAsset`.
 
 ## Capture flow
 
@@ -42,16 +46,19 @@ The ref-backed count still enforces `maxAssets` immediately.
 - photo flash mode;
 - Recorder lifecycle;
 - permission and AppState-derived activity;
-- completion, picker, and recoverable error UI.
+- system-library selection and preview state;
+- completion and recoverable error UI.
 
 The host owns:
 
 - whether a Modal is visible;
 - upload and persistence;
 - discard confirmation;
-- media-library selection;
 - compression, watermarking and metadata enrichment;
 - cleanup of temporary files.
+
+The host may still override media-library selection when it needs a custom
+picker or a business-specific asset source.
 
 ## Video lifecycle
 
@@ -72,12 +79,15 @@ manual stop. The asset is not committed until `processAsset` resolves.
 - Unmount cancels an active Recorder and stops timers.
 - Asynchronous captures check the mounted ref before committing React state.
 - Completion waits for the serialized photo chain.
+- Camera switching changes devices at peak blur and reveals the preview from
+  the next session's `onStarted` signal, with a short fallback for devices that
+  omit that lifecycle callback during swaps.
 
 ## Extension strategy
 
-Features that would otherwise add native dependencies are adapters:
+Application-specific behavior remains available through adapters:
 
-- `openLibrary` for any image/video picker;
+- `openLibrary` to override the built-in system image/video picker;
 - `processAsset` for compression, watermarks or file relocation;
 - `renderAsset` for custom thumbnails or video preview;
 - `cameraProps`, output options and recorder settings for supported

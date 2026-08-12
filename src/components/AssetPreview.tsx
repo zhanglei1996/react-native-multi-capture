@@ -29,6 +29,8 @@ interface AssetPreviewProps {
   theme: MultiCaptureTheme;
   visible: boolean;
   onClose: () => void;
+  onDone?: () => void;
+  isCompleting?: boolean;
   testID: string;
 }
 
@@ -128,6 +130,8 @@ export function AssetPreview({
   theme,
   visible,
   onClose,
+  onDone,
+  isCompleting = false,
   testID,
 }: AssetPreviewProps) {
   const { height, width } = useWindowDimensions();
@@ -248,7 +252,31 @@ export function AssetPreview({
             <Text style={[styles.counter, { color: theme.textColor }]}>
               {currentIndex + 1}/{assets.length}
             </Text>
-            <View style={styles.closeButton} />
+            {onDone ? (
+              <Pressable
+                accessibilityLabel={strings.done}
+                accessibilityRole="button"
+                disabled={isCompleting}
+                hitSlop={10}
+                onPress={onDone}
+                style={styles.actionButton}
+                testID={`${testID}-preview-done`}
+              >
+                <Text
+                  style={[
+                    styles.doneText,
+                    {
+                      color: theme.accentColor,
+                      opacity: isCompleting ? 0.62 : 1,
+                    },
+                  ]}
+                >
+                  {strings.done}
+                </Text>
+              </Pressable>
+            ) : (
+              <View style={styles.actionButton} />
+            )}
           </View>
         </SafeAreaView>
       </View>
@@ -289,6 +317,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  actionButton: {
+    minWidth: 56,
+    height: 60,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   closeIcon: {
     width: 16,
     height: 16,
@@ -297,5 +332,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     fontVariant: ['tabular-nums'],
+  },
+  doneText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

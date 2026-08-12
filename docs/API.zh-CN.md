@@ -1,5 +1,7 @@
 # API 参考
 
+[简体中文](API.zh-CN.md) | [English](API.en.md)
+
 ## MultiCaptureModal
 
 `MultiCaptureModal` 是推荐入口。它使用 React Native 原生 `Modal` 包装
@@ -32,7 +34,7 @@
 | ----------------------- | ------------------------------- | --------- | ---------------------------------- |
 | `maxAssets`             | `number`                        | `10`      | 文件与在途任务的总上限，最小值为 1 |
 | `mediaType`             | `'photo' \| 'video' \| 'mixed'` | `'photo'` | 捕获类型                           |
-| `initialMode`           | `'photo' \| 'video'`            | `'photo'` | mixed 模式初始页签                 |
+| `initialMode`           | `'photo' \| 'video'`            | `'photo'` | mixed 初始页签；video 模式固定为 video |
 | `initialCameraPosition` | `'front' \| 'back'`             | `'back'`  | 初始相机                           |
 | `initialAssets`         | `readonly CaptureAssetInput[]`  | `[]`      | 会话已有文件                       |
 | `enableAudio`           | `boolean`                       | `false`   | 录像录音；开启后麦克风权限变为必需 |
@@ -45,6 +47,7 @@
 | `enableTapToFocus`      | `boolean`                       | `true`    | 设备支持时启用点按对焦和对焦框动画 |
 | `enableHaptics`         | `boolean`                       | `false`   | 快门按下/抬起时触发轻震动          |
 | `enablePreview`         | `boolean`                       | `true`    | 点击缩略图打开内置全屏媒体预览     |
+| `enableLibraryPicker`   | `boolean`                       | `true`    | 显示内置系统相册选择入口           |
 
 Android 使用内置震动时，宿主必须声明
 `<uses-permission android:name="android.permission.VIBRATE" />`。也可传
@@ -75,12 +78,21 @@ VisionCamera Session 才保持 active。
 | ------------------------ | --------- | ------ | ------------------------ |
 | `autoRequestPermissions` | `boolean` | `true` | 首次挂载自动请求必要权限 |
 
-权限被永久拒绝后，权限页会调用 `Linking.openSettings()`。相册权限不属于组件职责，
-由 `openLibrary` 适配器处理。
+权限被永久拒绝后，权限页会调用 `Linking.openSettings()`。权限页仍保留内置相册入口；
+用户可以不授权摄像头，直接选择照片或视频、进入预览并完成提交。
 
-### 适配器
+相册按钮会尝试读取系统相册最新一张照片作为缩略图。iOS 使用
+`NSPhotoLibraryUsageDescription`；Android 33+ 使用 `READ_MEDIA_IMAGES`，旧版本使用
+`READ_EXTERNAL_STORAGE`。拒绝该读取权限只会回退到默认图标，系统选择器仍可使用。
+
+### 相册选择与适配器
 
 #### openLibrary
+
+默认无需传入。组件使用系统照片选择器，根据 `remaining` 限制多选数量，选择完成后
+自动进入内置预览。`enableLibraryPicker={false}` 会隐藏所有相册入口。
+
+如果宿主已有定制相册，可通过 `openLibrary` 覆盖默认选择器：
 
 ```ts
 type OpenLibrary = (context: {
@@ -90,7 +102,7 @@ type OpenLibrary = (context: {
 }) => Promise<readonly CaptureAssetInput[] | null>;
 ```
 
-- `null` 表示用户取消。
+- `null` 表示用户取消；未传 `openLibrary` 时使用内置系统选择器。
 - 超过 `remaining` 的结果会被截断并报告 `limit-reached`。
 - 与 `mediaType` 不一致的文件会被忽略。
 - 每个相册文件也会经过 `processAsset`。
@@ -125,8 +137,9 @@ type ProcessAsset = (
 `onDone` 抛错或 reject 时会触发 `completion-failed`，组件保持打开。
 
 默认预览支持照片与视频，并可左右滑动查看本次拍摄的全部文件。视频使用系统播放控件，
-打开预览时相机会暂停，关闭后恢复。设置 `enablePreview={false}` 可关闭内置预览；
-传入 `onPreviewAsset` 时，该回调优先于内置预览。
+顶部“完成”可以直接提交当前文件集合；打开预览时相机会暂停，关闭后恢复。设置
+`enablePreview={false}` 可关闭内置预览；传入 `onPreviewAsset` 时，该回调优先于
+内置预览。
 
 ### UI 定制
 

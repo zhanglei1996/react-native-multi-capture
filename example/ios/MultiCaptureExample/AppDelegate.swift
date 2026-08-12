@@ -14,6 +14,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+#if DEBUG
+    // The "Dismiss ×" banner belongs to Metro/Fast Refresh, not the camera UI.
+    RCTDevLoadingViewSetEnabled(false)
+#endif
     let delegate = ReactNativeDelegate()
     let factory = RCTReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()

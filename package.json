@@ -1,6 +1,6 @@
 {
   "name": "react-native-multi-capture",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A production-ready multi-capture photo and video camera for React Native",
   "homepage": "https://github.com/zhanglei1996/react-native-multi-capture#readme",
   "bugs": {
@@ -22,11 +22,15 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "README.en.md",
     "assets",
     "src",
     "lib",
     "docs",
     "!docs/media/*.mp4",
+    "!docs/media/*.gif",
+    "!docs/media/*.png",
+    "!docs/media/*.webp",
     "android",
     "ios",
     "cpp",
@@ -72,6 +76,8 @@
     "@eslint/compat": "^2.1.0",
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^9.39.5",
+    "@react-native-camera-roll/camera-roll": "7.10.2",
+    "@react-native-community/blur": "^4.4.0",
     "@react-native/babel-preset": "0.86.2",
     "@react-native/eslint-config": "0.86.2",
     "@react-native/jest-preset": "0.86.2",
@@ -85,6 +91,7 @@
     "react": "19.2.3",
     "react-native": "0.86.2",
     "react-native-builder-bob": "^0.43.0",
+    "react-native-image-picker": "8.2.1",
     "react-native-nitro-image": "0.15.1",
     "react-native-nitro-modules": "0.36.3",
     "react-native-video": "7.0.0-beta.10",
@@ -93,8 +100,11 @@
     "typescript": "^6.0.3"
   },
   "peerDependencies": {
+    "@react-native-camera-roll/camera-roll": ">=7.10.2 <8.0.0",
+    "@react-native-community/blur": ">=4.4.0 <5.0.0",
     "react": ">=19.0.0",
     "react-native": ">=0.79.0",
+    "react-native-image-picker": ">=8.2.1 <9.0.0",
     "react-native-nitro-image": ">=0.12.0 <1.0.0",
     "react-native-nitro-modules": ">=0.29.0 <1.0.0",
     "react-native-video": ">=7.0.0-beta.10 <8.0.0",
